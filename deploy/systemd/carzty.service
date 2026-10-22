@@ -1,0 +1,35 @@
+##xchronusx
+# Carzty as a systemd service. Assumes the repo lives at /opt/carzty with a venv at /opt/carzty/.venv
+#   sudo useradd --system --home /opt/carzty carzty
+#   sudo chown -R carzty:carzty /opt/carzty
+#   sudo cp deploy/systemd/carzty.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now carzty
+#   journalctl -u carzty -f
+# Author: Zachary Wright (xchronusx)
+
+[Unit]
+Description=Carzty - Discord bot that nags you until you do the thing
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=carzty
+Group=carzty
+WorkingDirectory=/opt/carzty
+ExecStart=/opt/carzty/.venv/bin/python -m carzty
+Restart=on-failure
+RestartSec=10
+# exit 1 = bad config, exit 2 = bad token. restarting won't fix either, so don't
+RestartPreventExitStatus=1 2
+
+# lock it down. it needs the network and its own data folder, nothing else
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/carzty/data /opt/carzty/logs
+
+[Install]
+WantedBy=multi-user.target
+##xchronusx

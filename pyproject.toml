@@ -1,0 +1,61 @@
+##xchronusx
+# Carzty - a Discord bot that nags you until you do the thing.
+# Author: Zachary Wright (xchronusx) | https://github.com/xchronusx/carzty
+
+[project]
+name = "carzty"
+version = "1.0.0"
+description = "A Discord bot that reminds you about tasks on a schedule and nags you until you hit Done."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Zachary Wright", email = "chr0nu5alt@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    "discord.py>=2.5,<3",
+    "python-dotenv>=1.0",
+    "tzdata>=2024.1",  # windows has no IANA timezone database. this is it.
+]
+keywords = ["discord", "bot", "reminders", "tasks", "todo"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Communications :: Chat",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+carzty = "carzty.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/xchronusx/carzty"
+Issues = "https://github.com/xchronusx/carzty/issues"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["carzty*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 130
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "ARG", "BLE"]
+ignore = [
+    "E501",   # long lines happen. the formatter's not my boss
+    "SIM105", # contextlib.suppress is fine but try/except/pass reads easier to most people
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["carzty", "tests"]
+##xchronusx

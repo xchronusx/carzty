@@ -1,0 +1,88 @@
+##xchronusx
+# lint + tests on every push and PR. if this is red, don't merge it.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: py${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.10", "3.12", "3.13"]
+        include:
+          - os: windows-latest
+            python: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: python -m pytest
+
+  installers:
+    name: installer / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      CARZTY_NO_VERIFY: "1"  # fake token, so don't ask Discord about it
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: linux/mac one-liner (from this checkout)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          # built at runtime so there's never a token-shaped string sitting in the repo
+          export CARZTY_TOKEN="$(python -c "import base64; print(base64.urlsafe_b64encode(b'123456789012345678').decode().rstrip('=') + '.' + 'A'*6 + '.' + 'b'*38)")"
+          CARZTY_DIR="$RUNNER_TEMP/carzty" CARZTY_SRC="$GITHUB_WORKSPACE" CARZTY_NO_SERVICE=1 bash scripts/linux/carzty.install.zw.sh
+          test -f "$RUNNER_TEMP/carzty/.env"
+          "$RUNNER_TEMP/carzty/.venv/bin/python" -m carzty check
+      - name: windows setup script
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $Token = python -c "import base64; print(base64.urlsafe_b64encode(b'123456789012345678').decode().rstrip('=') + '.' + 'A'*6 + '.' + 'b'*38)"
+          .\scripts\windows\carzty.setup.zw.ps1 -Token $Token -Timezone America/Phoenix -NoPrompt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path .env)) { throw ".env never showed up" }
+          .\.venv\Scripts\python.exe -m carzty check
+
+  powershell:
+    name: powershell scripts
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          $Results = Invoke-ScriptAnalyzer -Path scripts -Recurse -Severity Error
+          $Results | Format-Table -AutoSize
+          if ($Results) { exit 1 }
+
+  docker:
+    name: docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t carzty:ci .
+      - run: docker run --rm carzty:ci check
+##xchronusx

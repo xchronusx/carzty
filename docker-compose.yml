@@ -1,0 +1,19 @@
+##xchronusx
+# docker compose run --rm carzty setup   the wizard (token, timezone, tone). once.
+# docker compose up -d                   start it
+# docker compose logs -f                 watch it judge you
+# docker compose pull && docker compose up -d   update
+# Author: Zachary Wright (xchronusx)
+
+services:
+  carzty:
+    image: ghcr.io/xchronusx/carzty:latest
+    # build: .          # uncomment to build from this checkout instead of pulling the prebuilt image
+    container_name: carzty
+    restart: unless-stopped
+    volumes:
+      - carzty-data:/app/data   # .env, database and logs all live in here
+
+volumes:
+  carzty-data:
+##xchronusx

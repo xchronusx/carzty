@@ -1,0 +1,6 @@
+##xchronusx
+# tests + lint. pip install -r requirements-dev.txt
+-r requirements.txt
+pytest>=8
+ruff>=0.6
+##xchronusx
