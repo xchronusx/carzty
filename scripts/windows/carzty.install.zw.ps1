@@ -106,17 +106,22 @@ param(
 
             New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
             # overwrite the code, leave .env / data / logs / .venv alone (they're not in the zip anyway).
-            # robocopy because Copy-Item -Recurse into an existing folder has opinions about nesting
-            & robocopy $Src.FullName $InstallDir /E /NFL /NDL /NJH /NJS /NP | Out-Null
-            if ($LASTEXITCODE -ge 8) { throw "robocopy failed copying into $InstallDir (exit $LASTEXITCODE)" }
-            $global:LASTEXITCODE = 0  # robocopy uses 1-7 for "worked". don't let that leak out
+            # file by file, because Copy-Item -Recurse into an existing folder has opinions about nesting,
+            # and robocopy isn't on everybody's PATH
+            $SrcRoot = $Src.FullName.TrimEnd('\', '/')
+            $Copied = 0
+            foreach ($File in Get-ChildItem -Path $SrcRoot -Recurse -File -Force) {
+                $Relative = $File.FullName.Substring($SrcRoot.Length + 1)
+                $Dest = Join-Path $InstallDir $Relative
+                $DestDir = Split-Path -Path $Dest -Parent
+                if (-not (Test-Path -LiteralPath $DestDir)) { New-Item -ItemType Directory -Path $DestDir -Force | Out-Null }
+                Copy-Item -LiteralPath $File.FullName -Destination $Dest -Force
+                # downloaded files get the "came from the internet" flag, which makes RemoteSigned refuse to run them
+                Unblock-File -LiteralPath $Dest -ErrorAction SilentlyContinue
+                $Copied++
+            }
             Remove-Item -Path $Stage, $ZipFile -Recurse -Force -ErrorAction SilentlyContinue
-
-            # downloaded files get the "came from the internet" flag, which makes RemoteSigned refuse to run them
-            Get-ChildItem -Path $InstallDir -Recurse -File -ErrorAction SilentlyContinue |
-                Where-Object { $_.FullName -notlike '*\.venv\*' } |
-                Unblock-File -ErrorAction SilentlyContinue
-            Write-Log "code's in place" 'OK'
+            Write-Log "code's in place ($Copied files)" 'OK'
         }
     }
     catch {
